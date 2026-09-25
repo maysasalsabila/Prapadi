@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prediksi Produksi Padi Berbasis Kondisi Iklim</title>
+
+<!-- Leaflet CSS: sengaja tanpa integrity agar tidak gagal dimuat karena hash yang salah -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin:0; width:100%; height:100%; font-family:Arial, Helvetica, sans-serif; color:#fff; }
+  body { overflow:hidden; }
+
+  #map {
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    background:#000000;
+    z-index:1;
+  }
+  .title-panel {
+    position:center;
+    z-index:1200;
+    top:16px;
+    left:35px;
+    max-width:min(720px, calc(100vw - 440px));
+    padding:13px 16px;
+    background:rgba(0, 0, 0, 0);
+    pointer-events:none;
+  }
+  .title-panel h1 { margin:0; font-size:24px; color:#fff; line-height:1.25; -webkit-text-stroke:1px #000; text-shadow:2px 2px 4px rgba(0,0,0,0.5); }
+
+  #controls {
+    position:fixed;
+    z-index:1200;
+    top:92px;
+    left:35px;
+    width:300px;
+    height:80px;
+    max-width:calc(100vw - 32px);
+    background:rgba(40, 40, 40, 0.591);
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    padding:13px 18px;
+    box-shadow:0 4px 18px rgba(15,23,42,.20);
+  }
+  #controls label { display:block; margin:0 0 6px; font-size:15px; font-weight:600; color:#ffff; }
+  #dateSelect {
+    width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:7px;
+    background:#333; color:#fff; font-size:13px;
+  }
+
+  #oni-panel {
+    position:fixed;
+    z-index:1300;
+    top:92px;
+    right:16px;
+    width:300px;
+    height:200px;
+    overflow:auto;
+    padding:14px 16px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    background:rgba(40, 40, 40, 0.591);
+    color:#fff;
+    box-shadow:0 4px 18px rgba(15,23,42,.22);
+    font:13px/1.35 Arial, sans-serif;
+  }
+  #oni-panel h3 { margin:0 0 8px; font-size:18px; }
+  #oni-panel p { margin:5px 0 10px; color:#ffffff; }
+  #oni-panel table { width:100%; border-collapse:collapse; }
+  #oni-panel th, #oni-panel td {
+    padding:5px 5px; text-align:left; border-bottom:1px solid #e2e8f0; white-space:nowrap;
+  }
+  #oni-panel th { background:#333; color:#fff; font-weight:600; position:sticky; top:0; }
+  .badge { display:inline-block; padding:2px 6px; border-radius:999px; font-size:10px; font-weight:700; }
+  .elnino { background:#991b1b; color:#fff; }
+  .lanina { background:#1e40af; color:#fff; }
+  .normal { background:#166534; color:#fff; }
+
+  .legend {
+    position:fixed;
+    z-index:1200;
+    left:16px;
+    bottom:22px;
+    background:rgba(40, 40, 40, 0.591);
+    border:1px solid #cbd5e1;
+    border-radius:8px;
+    padding:10px 12px;
+    box-shadow:0 4px 18px rgba(15,23,42,.16);
+    font-size:15px;
+    color:#fff;
+  }
+  .gradient { width:250px; height:12px; margin:6px 0 3px;
+    background:linear-gradient(to right, #d73027, #fee08b, #1a9850);
+    border-radius:4px; }
+  .legend-row { display:flex; justify-content:space-between; width:250px; }
+
+  .leaflet-control-layers {
+    border-radius:8px !important;
+    box-shadow:0 2px 12px rgba(15,23,42,.18) !important;
+  }
+  .leaflet-control-attribution { font-size:10px; color:#fff; background:rgba(0,0,0,.55); }
+  .leaflet-control-attribution a { color:#fff; }
+  .leaflet-control-zoom a,
+  .leaflet-control-layers { background:#333; color:#fff; }
+  .twso-popup { min-width:220px; }
+  .leaflet-popup-content-wrapper,
+  .leaflet-popup-tip { background:#333; color:#fff; }
+  .twso-popup h4 { margin:0 0 8px; font-size:14px; color:#fff; }
+  .twso-popup table { width:100%; border-collapse:collapse; font-size:12px; }
+  .twso-popup td { padding:3px 0; border-bottom:1px solid #e2e8f0; }
+  .twso-popup td:last-child { text-align:right; font-weight:700; padding-left:12px; }
+  .twso-popup .muted { margin-top:7px; color:#fff; font-size:10px; }
+
+  @media (max-width:900px) {
+    .title-panel { max-width:calc(100vw - 32px); top:10px; left:10px; }
+    .title-panel h1 { font-size:19px; }
+    #controls { top:72px; left:10px; width:330px; }
+    #oni-panel { top:auto; bottom:10px; right:10px; width:360px; max-height:42vh; }
+    .legend { left:10px; bottom:10px; }
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="title-panel">
+  <h1>Prediksi Produksi Padi Berbasis Kondisi Iklim</h1>
+</div>
+
+<div id="controls">
+  <label for="dateSelect">Periode / reftime</label>
+  <select id="dateSelect">
+    <option value="20190101">Prediksi terkini</option>
+    <option value="20190401">Prediksi satu bulan ke depan</option>
+    <option value="20190701">Prediksi dua bulan ke depan</option>
+    <option value="20191001">Prediksi tiga bulan ke depan</option>
+  </select>
+
+
+<aside id="oni-panel">
+  <h3>Indeks ONI</h3>
+  <p>El Nino ≥ 0.5; La Nina ≤ -0.5. Nilai di antara ambang dikategorikan normal.</p>
+  <table>
+    <thead><tr><th>Bulan</th><th>Musim</th><th>ONI</th><th>Keterangan</th></tr></thead>
+    <tbody>
+      <tr><td>01</td><td>DJF</td><td>1.0</td><td><span class="badge elnino">Diprediksi El Nino</span></td></tr>
+      <tr><td>02</td><td>JFM</td><td>0.9</td><td><span class="badge elnino">Diprediksi El Nino</span></td></tr>
+      <tr><td>03</td><td>FMA</td><td>0.9</td><td><span class="badge elnino">Diprediksi El Nino</span></td></tr>
+      <tr><td>04</td><td>MAM</td><td>0.8</td><td><span class="badge elnino">Diprediksi El Nino</span></td></tr>
+      <tr><td>05</td><td>AMJ</td><td>0.7</td><td><span class="badge elnino">Diprediksi El Nino</span></td></tr>
+      <tr><td>06</td><td>MJJ</td><td>0.6</td><td><span class="badge elnino">Diprediksi El Nino</span></td></tr>
+      <tr><td>07</td><td>JJA</td><td>0.4</td><td><span class="badge normal">Diprediksi Normal</span></td></tr>
+      <tr><td>08</td><td>JAS</td><td>0.2</td><td><span class="badge normal">Diprediksi Normal</span></td></tr>
+      <tr><td>09</td><td>ASO</td><td>0.3</td><td><span class="badge normal">Diprediksi Normal</span></td></tr>
+      <tr><td>10</td><td>SON</td><td>0.5</td><td><span class="badge elnino">Diprediksi El Nino</span></td></tr>
+      <tr><td>11</td><td>OND</td><td>0.7</td><td><span class="badge elnino">Diprediksi El Nino</span></td></tr>
+      <tr><td>12</td><td>NDJ</td><td>0.8</td><td><span class="badge elnino">Diprediksi El Nino</span></td></tr>
+    </tbody>
+  </table>
+</aside>
+
+<div class="legend">
+  <div><b>Nilai Prediksi Produksi (ton/ha)</b></div>
+  <div class="gradient"></div>
+  <div class="legend-row"><span>rendah</span><span>tinggi</span></div>
+</div>
+
+<!-- Library -->
+ <link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/georaster@1.6.0/dist/georaster.browser.bundle.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/proj4@2.11.0/dist/proj4.js"></script>
+
+<script>
+const GeoRasterLayerClass = window.GeoRasterLayer || (window.L && window.L.GeoRasterLayer);
+
+const periods = {
+  "20190101": {
+    label: "Prediksi terkini",
+    path: {
+      1: "raster_kriging/TWSO_20190101_kriging_30m_web.tif",
+      2: "raster_kriging/TWSO_20190101_kriging_30m_web.tif"
+    }
+  },
+  "20190401": {
+    label: "Prediksi satu bulan ke depan",
+    path: {
+      1: "raster_kriging/TWSO_20190401_kriging_30m_web.tif",
+      2: "raster_kriging/TWSO_20190401_kriging_30m_web.tif"
+    }
+  },
+  "20190701": {
+    label: "Prediksi dua bulan ke depan",
+    path: {
+      1: "raster_kriging/TWSO_20190701_kriging_30m_web.tif",
+      2: "raster_kriging/TWSO_20190701_kriging_30m_web.tif"
+    }
+  },
+  "20191001": {
+    label: "Prediksi tiga bulan ke depan",
+    path: {
+      1: "raster_kriging/TWSO_20191001_kriging_30m_web.tif",
+      2: "raster_kriging/TWSO_20191001_kriging_30m_web.tif"
+    }
+  }
+};
+
+// Inisialisasi Leaflet. Ini sebelumnya hilang, sehingga `map` undefined.
+const map = L.map("map", {
+  center: [-7.5, 110.5],
+  zoom: 7,
+  zoomControl: true,
+  preferCanvas: true
+});
+
+const osm = L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }
+);
+
+const esriImagery = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom: 19,
+    attribution: 'Tiles &copy; Esri'
+  }
+);
+
+const esriStreet = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom: 19,
+    attribution: 'Tiles &copy; Esri'
+  }
+);
+
+// Default: Esri imagery. OSM dan Street tetap tersedia pada layer control.
+esriImagery.addTo(map);
+L.control.layers(
+  { "Esri Satellite": esriImagery, "OpenStreetMap": osm, "Esri Street": esriStreet },
+  {},
+  { position: "topright", collapsed: true }
+).addTo(map);
+
+let rasterLayer = null;
+let currentGeoRaster = null;
+let currentBand = 1;
+let currentDate = "20190101";
+
+function setStatus(msg) {
+  const el = document.getElementById("status");
+  if (el) el.textContent = msg;
+}
+
+function updateButtons() {
+  const ppBtn = document.getElementById("ppBtn");
+  const wlpBtn = document.getElementById("wlpBtn");
+  if (ppBtn) ppBtn.classList.toggle("active", currentBand === 1);
+  if (wlpBtn) wlpBtn.classList.toggle("active", currentBand === 2);
+}
+
+function colorFromValue(v, min, max) {
+  if (!Number.isFinite(v)) return null;
+  const stops = [
+    [215,48,39], [254,224,139], [26,152,80]
+  ];
+  const t = Math.max(0, Math.min(1, (v - min) / Math.max(1e-12, max - min)));
+  const p = t * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(p));
+  const f = p - i;
+  const a = stops[i], b = stops[i + 1];
+  const rgb = a.map((x, j) => Math.round(x + (b[j] - x) * f));
+  return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+}
+
+async function loadRaster(dateKey) {
+  currentDate = dateKey;
+  const info = periods[dateKey];
+  if (!info) return;
+
+  const filePath = info.path[currentBand];
+  if (!filePath) {
+    setStatus("File raster untuk band ini tidak tersedia.");
+    return;
+  }
+
+  if (rasterLayer) {
+    map.removeLayer(rasterLayer);
+    rasterLayer = null;
+  }
+  currentGeoRaster = null;
+
+  setStatus("Memuat raster: " + filePath);
+
+  try {
+    const response = await fetch(filePath, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status + " — file GeoTIFF tidak ditemukan");
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const georaster = await parseGeoraster(arrayBuffer);
+    currentGeoRaster = georaster;
+
+    const bandIndex = currentBand - 1;
+    if (!georaster.values || georaster.values.length <= bandIndex) {
+      throw new Error("Raster tidak mempunyai band " + currentBand + ". Jumlah band: " + (georaster.numberOfRasters || georaster.values?.length || 0));
+    }
+
+    // Gunakan TWSO PP sebagai acuan warna untuk semua mode tampilan.
+    const colorBandIndex = 0;
+    const min = Number(georaster.mins?.[colorBandIndex]);
+    const max = Number(georaster.maxs?.[colorBandIndex]);
+    const safeMin = Number.isFinite(min) ? min : 0;
+    const safeMax = Number.isFinite(max) ? max : 1;
+
+    if (!GeoRasterLayerClass) {
+      throw new Error("GeoRasterLayer library gagal dimuat. Cek koneksi ke CDN atau URL library.");
+    }
+
+    rasterLayer = new GeoRasterLayerClass({
+      georaster: georaster,
+      opacity: 0.78,
+      resolution: 256,
+      pixelValuesToColorFn: values => {
+        const v = values[colorBandIndex];
+        if (v === undefined || v === null || !Number.isFinite(v) || v <= -9990) return null;
+        return colorFromValue(v, safeMin, safeMax);
+      }
+    });
+
+    rasterLayer.addTo(map);
+
+    // Tunggu layer selesai menyiapkan bounds sebelum zoom ke raster.
+    const bounds = rasterLayer.getBounds();
+    if (bounds && bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [20, 20], maxZoom: 9 });
+    }
+
+    const bandName = currentBand === 1
+      ? "Prediksi produksi padi potensial"
+      : "Prediksi produksi dengan keterbatasan air";
+    setStatus(info.label + " · " + bandName + " · band " + currentBand);
+  } catch (err) {
+    console.error("Raster error:", err);
+    setStatus("Gagal memuat raster: " + err.message);
+  }
+}
+
+function getRasterValue(georaster, bandIndex, latlng) {
+  if (!georaster || !georaster.values?.[bandIndex]) return null;
+
+  const sourceProjection = "EPSG:4326";
+  const targetProjection = "+proj=utm +zone=49 +south +datum=WGS84 +units=m +no_defs";
+  const [xCoordinate, yCoordinate] = proj4(sourceProjection, targetProjection, [latlng.lng, latlng.lat]);
+  const x = Math.floor((xCoordinate - georaster.xmin) / georaster.pixelWidth);
+  const y = Math.floor((georaster.ymax - yCoordinate) / Math.abs(georaster.pixelHeight));
+  const band = georaster.values[bandIndex];
+  const value = band[y]?.[x];
+
+  return Number.isFinite(value) && value > -9990 ? value : null;
+}
+
+function formatRasterValue(value) {
+  return value === null ? "Tidak tersedia" : `${value.toLocaleString("id-ID", { maximumFractionDigits: 1 })} ton/ha`;
+}
+
+map.on("click", event => {
+  if (!currentGeoRaster) return;
+
+  const ppValue = getRasterValue(currentGeoRaster, 0, event.latlng);
+  const wlpValue = getRasterValue(currentGeoRaster, 1, event.latlng);
+  const hasValue = ppValue !== null || wlpValue !== null;
+  if (!hasValue) {
+    L.popup().setLatLng(event.latlng).setContent("Tidak ada data raster pada titik ini.").openOn(map);
+    return;
+  }
+
+  const reduction = ppValue !== null && wlpValue !== null && ppValue !== 0
+    ? ((ppValue - wlpValue) / ppValue) * 100
+    : null;
+  const reductionText = reduction === null
+    ? "Tidak dapat dihitung"
+    : `${reduction.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%`;
+
+  const popupContent = `
+    <div class="twso-popup">
+      <h4>Prediksi Produksi Padi</h4>
+      <table>
+        <tr><td>Prediksi Potensial</td><td>${formatRasterValue(ppValue)}</td></tr>
+        <tr><td>Prediksi dengan Keterbatasan Air</td><td>${formatRasterValue(wlpValue)}</td></tr>
+        <tr><td>Penurunan akibat air</td><td>${reductionText}</td></tr>
+      </table>
+      <div class="muted">${event.latlng.lat.toFixed(5)}, ${event.latlng.lng.toFixed(5)}</div>
+    </div>`;
+
+  L.popup({ maxWidth: 300 })
+    .setLatLng(event.latlng)
+    .setContent(popupContent)
+    .openOn(map);
+});
+
+document.getElementById("dateSelect").addEventListener("change", e => loadRaster(e.target.value));
+
+document.getElementById("ppBtn").addEventListener("click", () => {
+  currentBand = 1;
+  updateButtons();
+  loadRaster(currentDate);
+});
+
+document.getElementById("wlpBtn").addEventListener("click", () => {
+  currentBand = 2;
+  updateButtons();
+  loadRaster(currentDate);
+});
+
+updateButtons();
+loadRaster(currentDate);
+</script>
+</body>
+</html>
