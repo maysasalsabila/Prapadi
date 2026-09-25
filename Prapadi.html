@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRAPADI</title>
+<style>
+  /* Reset dasar — menghilangkan margin/padding bawaan browser
+     dan memastikan padding/border ikut dihitung dalam lebar elemen */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* Pengaturan halaman penuh + gambar latar belakang */
+  html, body {
+    height: 100%;                          /* supaya .hero bisa full-height */
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    color: #e6edf3;                        /* warna teks default (putih keabuan) */
+    background-image: url("assets/bglanding.jpg"); /* GANTI: path gambar lokal kamu */
+    background-size: cover;                /* gambar menutupi seluruh area, boleh terpotong */
+    background-position: center;           /* titik fokus gambar tetap di tengah */
+    background-repeat: no-repeat;          /* gambar tidak diulang/tile */
+  }
+
+  /* Container utama landing page — membuat konten (judul, teks, tombol)
+     berada tepat di tengah layar secara vertikal & horizontal */
+  .hero {
+    height: 100%;
+    display: flex;
+    flex-direction: column;      /* susun elemen dari atas ke bawah */
+    align-items: center;         /* rata tengah horizontal */
+    justify-content: center;     /* rata tengah vertikal */
+    text-align: center;
+    padding: 24px;
+    background: rgba(41, 42, 35, 0.342); /* overlay gelap transparan di atas gambar,
+                                            supaya teks putih tetap kontras & terbaca */
+  }
+
+  /* Judul utama "PRAPADI" */
+  .hero h1 {
+    font-size: 70px;
+    font-weight: 700;
+    letter-spacing: 3px;   /* sedikit renggangkan antar huruf, kesan tegas */
+    margin-bottom: 4px;
+    color:#e6edf3;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5); /* bayangan halus agar teks lebih menonjol di atas gambar */
+  
+  }
+
+  /* Subjudul / deskripsi singkat di bawah judul */
+  .hero p {
+    color: #eff0f1;         /* abu-abu, lebih redup dari judul agar ada hierarki visual */
+    font-size: 20px;
+    max-width: 600px;       /* batasi lebar teks supaya tidak melebar penuh layar */
+    margin-bottom: 45px;
+  }
+
+  /* Tombol "Jelajahi" yang mengarah ke peta.html */
+  .btn-Jelajahii {
+    background: #c18502a7;       /* warna aksen biru */
+    color: #f3f5f7;            /* teks gelap agar kontras dengan tombol biru terang */
+    border: none;
+    padding: 10px 100px;
+    border-radius: 999px;      /* radius besar = bentuk pil/kapsul */
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;     /* hilangkan garis bawah bawaan tag <a> */
+    display: inline-block;
+    transition: transform 0.15s ease, opacity 0.15s ease; /* animasi halus saat hover */
+  }
+
+  /* Efek saat kursor diarahkan ke tombol: sedikit naik + memudar */
+  .btn-Jelajahii:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+  }
+</style>
+</head>
+<body>
+
+<!-- Blok konten utama landing page -->
+<div class="hero">
+  <h1>PRAPADI</h1>                                    <!-- Judul aplikasi -->
+  <p>Prediksi Produksi Padi Nusantara Berbasis Kondisi Iklim</p>              <!-- Tagline/deskripsi singkat -->
+  <a href="http://localhost:8000/Index2.html" class="btn-Jelajahii">Jelajahi →</a> <!-- Tombol navigasi ke halaman peta -->
+</div>
+
+</body>
+</html>
